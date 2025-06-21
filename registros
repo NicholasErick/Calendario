@@ -1,379 +1,116 @@
-<!DOCTYPE html>
-<html lang="pt-BR" class="">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calendário Interativo com Ações</title>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = { darkMode: 'class' }
-    </script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; font-family: 'Inter', sans-serif; user-select: none; }
-        .transition-all-ease { transition: all 0.3s ease-in-out; }
-        .active-btn { transform: scale(0.95); }
-        input[type='number']::-webkit-inner-spin-button, input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        input[type='number'] { -moz-appearance: textfield; }
-        
-        .form-input{width:100%;padding:0.5rem 0.75rem;color:#374151;background-color:#f9fafb;border:1px solid #d1d5db;border-radius:0.375rem;box-shadow:0 1px 2px 0 rgba(0,0,0,0.05);}
-        .form-input:focus{outline:none;box-shadow:0 0 0 2px #3b82f6;border-color:#3b82f6;}
-        .dark .form-input{background-color:#374151;border-color:#4b5563;color:#e5e7eb;}
-        .dark .form-input:focus{box-shadow:0 0 0 2px #3b82f6;}
-        .form-label{display:block;font-size:0.875rem;font-weight:500;color:#4b5563;margin-bottom:0.25rem;}
-        .dark .form-label{color:#d1d5db;}
-        .error-message{color:#ef4444;font-size:0.75rem;margin-top:0.25rem;}
-        
-        .autoresize-textarea {
-            min-height: 8rem;
-            resize: vertical;
-            overflow-y: hidden;
-        }
-
-        #toast-notification {
-            transition: opacity 0.3s, transform 0.3s;
-        }
-
-        .timeline-item-enter {
-            opacity: 0;
-            transform: translateY(-10px);
-        }
-
-        .timeline-item-enter-active {
-            opacity: 1;
-            transform: translateY(0);
-            transition: opacity 0.3s, transform 0.3s;
-        }
-    </style>
-</head>
-<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-    
-    <!-- Ecrã de Mapeamento Inicial -->
-    <div id="initial-mapping-screen" class="p-4 md:p-6 max-w-2xl mx-auto">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 relative">
-             <div class="flex justify-between items-start mb-4">
-                <div>
-                    <h2 class="text-2xl font-semibold text-gray-800 dark:text-white">Filtros Iniciais</h2>
-                    <p class="text-gray-600 dark:text-gray-400 mt-1">Por favor, selecione os filtros para visualizar o calendário.</p>
-                </div>
-                <a href="https://org52b6eb4e.crm.dynamics.com/WebResources/cr9ff_guiadeorientacao" target="_blank" class="flex-shrink-0 flex items-center text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors">
-                    <i data-lucide="help-circle" class="h-4 w-4 mr-1.5"></i>
-                    Guia de Uso
-                </a>
-            </div>
-
-            <!-- Indicador de Carregamento -->
-            <div id="loading-indicator" class="flex justify-center items-center py-8">
-                <svg class="animate-spin -ml-1 mr-3 h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span class="text-lg font-medium text-gray-700 dark:text-gray-300">A carregar dados...</span>
-            </div>
-            
-            <!-- Formulário de Filtros -->
-            <div id="mapping-form" class="hidden space-y-4">
-                <div>
-                    <label for="categoria-select" class="form-label">Categoria*</label>
-                    <div class="relative">
-                        <select id="categoria-select" class="form-input" required>
-                            <option value="">Selecione uma Categoria</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <label for="responsavel-select" class="form-label">Responsável*</label>
-                    <div class="relative">
-                        <select id="responsavel-select" class="form-input" required>
-                                <option value="">Selecione um Responsável</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <label for="servico-select" class="form-label">Serviço</label>
-                     <div class="relative">
-                        <select id="servico-select" class="form-input">
-                            <option value="">Todos os Serviços</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="pt-4">
-                    <button id="show-timeline-btn" class="w-full flex justify-center items-center bg-blue-600 text-white font-semibold text-base py-3 px-4 rounded-lg hover:bg-blue-700 transition-all-ease active-btn focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900 disabled:bg-blue-400 disabled:cursor-not-allowed">
-                        <span class="mr-2">Ver Registros</span>
-                        <i data-lucide="arrow-right" class="h-5 w-5"></i>
-                    </button>
-                    <p id="initial-filters-error" class="text-center text-red-500 text-sm mt-2 hidden">Por favor, selecione Categoria e Responsável.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="timeline-container" class="p-4 md:p-6 max-w-2xl mx-auto hidden">
-        <div class="mb-4 flex justify-between items-center">
-            <button id="timeline-change-filters-btn" class="text-sm text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap">Alterar Filtros</button>
-            <button id="view-calendar-btn" class="text-sm text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap">Ver Calendário / Registrar para outra data</button>
-        </div>
-        <div id="timeline-list" class="space-y-4"></div>
-    </div>
-
-
-    <div id="calendar-container" class="p-4 md:p-6 max-w-2xl mx-auto hidden">
-        <!-- Secção de Filtros Ativos -->
-        <div id="active-filters-container" class="mb-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 hidden">
-            <div class="flex flex-wrap justify-between items-center gap-4">
-                 <div id="filter-tags" class="flex flex-wrap gap-2 items-center">
-                    <!-- Tags de filtro serão inseridas aqui -->
-                </div>
-                <div class="flex gap-4">
-                    <button id="show-timeline-view-btn" class="text-sm text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap">Ver Registros</button>
-                    <button id="change-filters-btn" class="text-sm text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap">Alterar Filtros</button>
-                </div>
-            </div>
-       </div>
-
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 transition-colors duration-300 relative">
-             <!-- Overlay de Carregamento para o Calendário -->
-            <div id="calendar-loading-overlay" class="absolute inset-0 bg-white/50 dark:bg-gray-800/50 z-10 flex justify-center items-center rounded-lg hidden">
-                <svg class="animate-spin h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-            </div>
-            <!-- Cabeçalho do Calendário -->
-            <div id="calendar-header" class="flex items-center justify-between mb-4">
-                <h2 id="month-year-title" class="text-xl md:text-2xl font-semibold text-gray-800 dark:text-white cursor-pointer hover:text-blue-600 dark:hover:text-blue-400">Junho 2025</h2>
-                <div class="flex items-center space-x-2">
-                    <a href="https://org52b6eb4e.crm.dynamics.com/WebResources/cr9ff_guiadeorientacao" target="_blank" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-all-ease" title="Guia de Uso">
-                        <i data-lucide="help-circle" class="h-5 w-5 text-gray-600 dark:text-gray-400"></i>
-                    </a>
-                    <button id="today-btn" class="px-3 py-1 text-sm font-medium rounded-md active-btn transition-all-ease">Hoje</button>
-                    <button id="prev-month-btn" class="p-2 rounded-full active-btn transition-all-ease"><i data-lucide="chevron-left" class="h-5 w-5"></i></button>
-                    <button id="next-month-btn" class="p-2 rounded-full active-btn transition-all-ease"><i data-lucide="chevron-right" class="h-5 w-5"></i></button>
-                    <button id="theme-toggle-btn" class="p-2 rounded-full active-btn transition-all-ease"><i id="theme-icon" data-lucide="sun" class="h-5 w-5"></i></button>
-                </div>
-            </div>
-
-            <!-- Grelhas do Calendário -->
-            <div id="days-of-week" class="grid grid-cols-7 gap-1 text-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
-                <div>Dom</div> <div>Seg</div> <div>Ter</div> <div>Qua</div> <div>Qui</div> <div>Sex</div> <div>Sáb</div>
-            </div>
-            <div id="calendar-grid" class="grid grid-cols-7 gap-1"></div>
-            <div id="month-view" class="grid grid-cols-3 gap-2 hidden"></div>
-            <div id="year-view" class="hidden items-center justify-center">
-                 <div class="flex items-center justify-center space-x-2">
-                    <button id="prev-year-chunk-btn" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-all-ease active-btn"><i data-lucide="chevron-left" class="h-5 w-5 text-gray-600 dark:text-gray-400"></i></button>
-                    <div id="year-grid" class="grid grid-cols-4 gap-2"></div>
-                    <button id="next-year-chunk-btn" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-all-ease active-btn"><i data-lucide="chevron-right" class="h-5 w-5 text-gray-600 dark:text-gray-400"></i></button>
-                </div>
-            </div>
-            <!-- Legenda -->
-            <div id="calendar-legend" class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex flex-wrap gap-x-4 gap-y-2">
-                <!-- A legenda será inserida aqui via JS -->
-            </div>
-        </div>
-    </div>
-    
-    <!-- Modal de Ações -->
-    <div id="actions-modal" class="fixed inset-0 bg-gray-900/50 flex items-center justify-center p-4 hidden opacity-0 transition-all-ease">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 scale-95 transition-all-ease">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Ações para o Período</h3>
-            <div class="space-y-4">
-                <div id="imbativel-section" class="flex items-center p-3 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                    <input id="imbativel-checkbox" type="checkbox" class="h-4 w-4 rounded text-orange-500 border-gray-300 focus:ring-orange-500">
-                    <label for="imbativel-checkbox" class="ml-3 text-sm font-medium">Marcar como Dia Imbatível</label>
-                    <i data-lucide="star" class="h-4 w-4 ml-auto text-orange-400"></i>
-                </div>
-                <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
-                    <div class="p-3 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700/50"><input id="sem-ocorrencia-radio" name="ocorrencia_tipo" type="radio" value="sem_ocorrencia" class="h-4 w-4 text-green-600 focus:ring-green-500"><label for="sem-ocorrencia-radio" class="ml-3 text-sm font-medium">Marcar como Sem Ocorrência</label></div>
-                    <div id="rca-option-container" class="p-3 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700/50"><input id="rca-radio" name="ocorrencia_tipo" type="radio" value="rca" class="h-4 w-4 text-red-600 focus:ring-red-500"><label for="rca-radio" class="ml-3 text-sm font-medium">Registar PostMortem</label></div>
-                </div>
-            </div>
-            <div class="mt-6 flex justify-end space-x-3">
-                <button id="cancel-modal-btn" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 transition-colors">Cancelar</button>
-                <button id="apply-modal-btn" class="flex justify-center items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors">Aplicar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal do Assistente PostMortem -->
-    <div id="rca-wizard-modal" data-start-date="" data-end-date="" class="fixed inset-0 bg-gray-900/50 flex items-center justify-center p-4 hidden opacity-0 transition-all-ease">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl scale-95 transition-all-ease">
-            <div class="p-6 border-b">
-                <h3 class="text-lg font-semibold">Registo de PostMortem</h3>
-                <p class="text-sm text-gray-500" id="rca-step-indicator">Passo <span id="rca-current-step">1</span> de 2</p>
-            </div>
-            
-            <div id="rca-error-summary" class="p-4 bg-red-50 border-l-4 border-red-400 hidden mx-6 rounded"></div>
-
-            <form id="rca-form" class="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-                <!-- Etapa 1: Período e Impacto -->
-                <div id="rca-step-1" class="rca-step">
-                    <h4 class="font-semibold mb-4">Etapa 1: Período e Impacto</h4>
-                     <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
-                        <div>
-                            <label for="rca-inicio-time" class="form-label">Hora de Início*</label>
-                            <div class="flex items-center space-x-2 p-2 bg-gray-100 dark:bg-gray-700/50 rounded-md">
-                                <span id="rca-inicio-date" class="font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap"></span>
-                                <input type="time" id="rca-inicio-time" class="form-input" required>
-                            </div>
-                            <p class="error-message hidden">Hora de início é obrigatória.</p>
-                        </div>
-                        <div>
-                            <label for="rca-fim-time" class="form-label">Hora de Fim*</label>
-                            <div class="flex items-center space-x-2 p-2 bg-gray-100 dark:bg-gray-700/50 rounded-md">
-                                <span id="rca-fim-date" class="font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap"></span>
-                                <input type="time" id="rca-fim-time" class="form-input" required>
-                            </div>
-                            <p class="error-message hidden">Hora de fim é obrigatória.</p>
-                        </div>
-                        <div>
-                            <label for="rca-problema-num" class="form-label">Nº do Problema</label>
-                            <input type="text" id="rca-problema-num" placeholder="PRB0123456" class="form-input">
-                            <p class="error-message hidden">Formato inválido. Use PRB0123456.</p>
-                        </div>
-                         <div>
-                            <label for="rca-incidente-num" class="form-label">Nº do Incidente</label>
-                            <input type="text" id="rca-incidente-num" placeholder="INC0123456" class="form-input">
-                            <p class="error-message hidden">Formato inválido. Use INC0123456.</p>
-                        </div>
-                        <div>
-                            <label for="rca-impacto" class="form-label">Impacto (%)*</label>
-                            <input type="number" id="rca-impacto" step="0.1" class="form-input" required>
-                            <p class="error-message hidden">Valor deve estar entre 0 e 100.</p>
-                        </div>
-                        <div>
-                            <label for="rca-racional" class="form-label">Racional do Impacto*</label>
-                            <select id="rca-racional" class="form-input" required>
-                                <!-- As opções serão preenchidas dinamicamente -->
-                            </select>
-                             <p class="error-message hidden">Campo obrigatório.</p>
-                        </div>
-                    </div>
-                    <div class="mt-4 border-t pt-4">
-                        <label class="flex items-center cursor-pointer">
-                            <input type="checkbox" id="rca-critico-toggle" class="sr-only peer">
-                            <div class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-red-600"></div>
-                            <span class="ms-3 text-sm font-medium">Evento Crítico?</span>
-                        </label>
-                    </div>
-                    <div id="rca-servico-critico-section" class="mt-4 hidden">
-                        <label for="rca-servico-critico" class="form-label">Serviço Crítico Afetado*</label>
-                        <select id="rca-servico-critico" class="form-input">
-                            <option value="">Selecione um serviço...</option>
-                        </select>
-                        <p class="error-message hidden">Campo obrigatório.</p>
-                    </div>
-                </div>
-                <!-- Etapa 2: Análise -->
-                <div id="rca-step-2" class="rca-step hidden">
-                    <h4 class="font-semibold mb-4">Etapa 2: Análise e Descrições</h4>
-                     <div class="space-y-4">
-                        <div>
-                            <label for="rca-problema-desc" class="form-label">Qual foi o problema observado?*</label>
-                            <textarea id="rca-problema-desc" class="form-input autoresize-textarea" required data-autoresize placeholder="Descreva o problema observado aqui..."></textarea>
-                            <p class="error-message hidden">Campo obrigatório.</p>
-                        </div>
-                        <div>
-                            <label for="rca-causa" class="form-label">Qual foi a causa raiz identificada?*</label>
-                            <textarea id="rca-causa" class="form-input autoresize-textarea" required data-autoresize placeholder="Descreva a causa raiz aqui..."></textarea>
-                             <p class="error-message hidden">Campo obrigatório.</p>
-                        </div>
-                        <div>
-                            <label for="rca-resolucao" class="form-label">Qual foi a ação de contorno/resolução realizada?*</label>
-                            <textarea id="rca-resolucao" class="form-input autoresize-textarea" required data-autoresize placeholder="Descreva a ação de contorno ou resolução realizada aqui..."></textarea>
-                             <p class="error-message hidden">Campo obrigatório.</p>
-                        </div>
-                    </div>
-                </div>
-            </form>
-
-            <div class="p-6 border-t flex justify-between items-center">
-                <button id="rca-cancel-btn" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 transition-colors">Cancelar</button>
-                <div class="space-x-3">
-                    <button id="rca-prev-btn" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 transition-colors">Anterior</button>
-                    <button id="rca-next-btn" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">Próximo</button>
-                    <button id="rca-save-btn" class="flex justify-center items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors hidden">Salvar PostMortem</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Toast Notification -->
-    <div id="toast-notification" class="fixed top-5 right-5 w-full max-w-xs p-4 rounded-lg shadow-lg text-white opacity-0 transform translate-y-2 transition-all-ease" style="z-index: 100;">
-        <div class="flex items-center">
-            <div id="toast-icon" class="mr-3"></div>
-            <p id="toast-message" class="text-sm font-medium"></p>
-        </div>
-    </div>
-
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            'use strict';
-            
-            // --- CONSTANTES E ESTADO ---
-            const API_ENDPOINTS = {
-                initialData: 'https://prod-96.westus.logic.azure.com:443/workflows/0fa3bd3693404e0784ac54c5384ffce6/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=RZJjoPihCDjQogYqzHJLRBoQeOxGprDNjyWZxR8DJZM',
-                monthData: 'https://prod-13.westus.logic.azure.com:443/workflows/99be8b0c613047a498ac7f9b2bcfe2ca/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=DOoibAcjA_KJM0_kv2pkiM33ajFy7HsvJG2Ih8zNdGs',
-                save: 'https://prod-126.westus.logic.azure.com:443/workflows/1457a62308f64bbabb597499c9bb4618/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Kg5fzqa7buSQaV0TxVsvfeUbq-ICMobfxiQFRzbf1Wk',
-                servicosCriticos: 'https://prod-119.westus.logic.azure.com:443/workflows/d2e495e96af548acaa70318d74c07596/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=n4FxWDTe1al2x_30knYpYLxxjT1YmzqRUmEyoHF6oJ4'
-            };
-            const MONTH_NAMES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-            const STATUS_CODES = { RCA: 867770000, SEM_OCORRENCIA: 867770001 };
-            const MARKER_TYPES = {
-                rca: { label: 'PostMortem Registado', color: 'bg-red-500', icon: null },
-                sem_ocorrencia: { label: 'Sem Ocorrência', color: 'bg-green-500', icon: null },
-                imbativel: { label: 'Dia Imbatível', color: 'text-orange-500', icon: 'star' }
-            };
-
-            let state = {
-                currentDate: new Date(),
-                currentView: 'timeline',
-                selectionStartDate: null,
-                selectionEndDate: null,
-                isDragging: false,
-                rcaCurrentStep: 1,
-                yearViewStart: null,
-                initialData: [],
-                dailyRecordData: {},
-                currentUserName: 'Utilizador Desconhecido',
-            };
-
-            // --- SELETORES DE DOM ---
-            const dom = {};
-            const allIds = [
-                'initial-mapping-screen', 'timeline-container', 'calendar-container', 'active-filters-container',
-                'loading-indicator', 'mapping-form', 'categoria-select', 'responsavel-select', 'servico-select',
-                'show-timeline-btn', 'initial-filters-error', 'filter-tags', 'timeline-change-filters-btn',
-                'change-filters-btn', 'view-calendar-btn', 'show-timeline-view-btn', 'timeline-list', 'calendar-grid',
-                'month-year-title', 'prev-month-btn', 'next-month-btn', 'today-btn', 'theme-toggle-btn', 'theme-icon',
-                'calendar-loading-overlay', 'calendar-legend', 'days-of-week', 'month-view', 'year-view', 'year-grid',
-                'prev-year-chunk-btn', 'next-year-chunk-btn', 'actions-modal', 'cancel-modal-btn', 'apply-modal-btn',
-                'imbativel-section', 'imbativel-checkbox', 'sem-ocorrencia-radio', 'rca-radio', 'rca-option-container',
-                'rca-wizard-modal', 'rca-form', 'rca-error-summary', 'rca-step-indicator', 'rca-prev-btn', 'rca-next-btn',
-                'rca-save-btn', 'rca-cancel-btn', 'rca-critico-toggle', 'rca-servico-critico-section',
-                'rca-servico-critico', 'rca-impacto', 'rca-racional', 'rca-inicio-date', 'rca-fim-date', 'rca-inicio-time',
-                'rca-fim-time', 'rca-problema-num', 'rca-incidente-num', 'rca-problema-desc', 'rca-causa', 'rca-resolucao',
-                'toast-notification', 'toast-message', 'toast-icon'
-            ];
-            allIds.forEach(id => {
-                const camelCaseId = id.replace(/-./g, char => char[1].toUpperCase());
-                dom[camelCaseId] = document.getElementById(id);
-            });
-
-            // --- FUNÇÕES PRINCIPAIS E LÓGICA DA APP ---
-            // (Todas as funções auxiliares e a lógica principal da aplicação vão aqui)
-
-            // ... (O restante do código JavaScript que já está funcional será colocado aqui,
-            // garantindo que as variáveis e funções estejam no escopo correto) ...
-
-            // --- PONTO DE ENTRADA ---
-            lucide.createIcons();
-            main();
-        });
-    </script>
-</body>
-</html>
+diff --git a/registros b/registros
+index f1bab1f0b3ee4937e458d68e97facbd64b0764ae..c7ae0f96d80f00863cd682f594c56189047d5da7 100644
+--- a/registros
++++ b/registros
+@@ -342,38 +342,107 @@
+                 currentUserName: 'Utilizador Desconhecido',
+             };
+ 
+             // --- SELETORES DE DOM ---
+             const dom = {};
+             const allIds = [
+                 'initial-mapping-screen', 'timeline-container', 'calendar-container', 'active-filters-container',
+                 'loading-indicator', 'mapping-form', 'categoria-select', 'responsavel-select', 'servico-select',
+                 'show-timeline-btn', 'initial-filters-error', 'filter-tags', 'timeline-change-filters-btn',
+                 'change-filters-btn', 'view-calendar-btn', 'show-timeline-view-btn', 'timeline-list', 'calendar-grid',
+                 'month-year-title', 'prev-month-btn', 'next-month-btn', 'today-btn', 'theme-toggle-btn', 'theme-icon',
+                 'calendar-loading-overlay', 'calendar-legend', 'days-of-week', 'month-view', 'year-view', 'year-grid',
+                 'prev-year-chunk-btn', 'next-year-chunk-btn', 'actions-modal', 'cancel-modal-btn', 'apply-modal-btn',
+                 'imbativel-section', 'imbativel-checkbox', 'sem-ocorrencia-radio', 'rca-radio', 'rca-option-container',
+                 'rca-wizard-modal', 'rca-form', 'rca-error-summary', 'rca-step-indicator', 'rca-prev-btn', 'rca-next-btn',
+                 'rca-save-btn', 'rca-cancel-btn', 'rca-critico-toggle', 'rca-servico-critico-section',
+                 'rca-servico-critico', 'rca-impacto', 'rca-racional', 'rca-inicio-date', 'rca-fim-date', 'rca-inicio-time',
+                 'rca-fim-time', 'rca-problema-num', 'rca-incidente-num', 'rca-problema-desc', 'rca-causa', 'rca-resolucao',
+                 'toast-notification', 'toast-message', 'toast-icon'
+             ];
+             allIds.forEach(id => {
+                 const camelCaseId = id.replace(/-./g, char => char[1].toUpperCase());
+                 dom[camelCaseId] = document.getElementById(id);
+             });
+ 
+-            // --- FUNÇÕES PRINCIPAIS E LÓGICA DA APP ---
+-            // (Todas as funções auxiliares e a lógica principal da aplicação vão aqui)
++            // --- FUNÇÕES AUXILIARES ---
+ 
+-            // ... (O restante do código JavaScript que já está funcional será colocado aqui,
+-            // garantindo que as variáveis e funções estejam no escopo correto) ...
++            function applyTheme(theme) {
++                if (theme === 'dark') {
++                    document.documentElement.classList.add('dark');
++                } else {
++                    document.documentElement.classList.remove('dark');
++                }
++                localStorage.setItem('calendarTheme', theme);
++                updateThemeIcon();
++            }
++
++            function updateThemeIcon() {
++                const isDark = document.documentElement.classList.contains('dark');
++                dom.themeIcon.setAttribute('data-lucide', isDark ? 'moon' : 'sun');
++                lucide.createIcons();
++            }
++
++            function updateTitle() {
++                const month = state.currentDate.getMonth();
++                const year = state.currentDate.getFullYear();
++                dom.monthYearTitle.textContent = `${MONTH_NAMES[month]} ${year}`;
++            }
++
++            function renderCalendar() {
++                dom.calendarGrid.innerHTML = '';
++                const year = state.currentDate.getFullYear();
++                const month = state.currentDate.getMonth();
++
++                const firstDay = new Date(year, month, 1);
++                const startDay = new Date(firstDay);
++                startDay.setDate(startDay.getDate() - firstDay.getDay());
++
++                for (let i = 0; i < 42; i++) {
++                    const day = new Date(startDay);
++                    day.setDate(startDay.getDate() + i);
++
++                    const cell = document.createElement('div');
++                    cell.className = 'h-12 flex items-center justify-center rounded-lg text-sm';
++                    cell.textContent = day.getDate();
++                    if (day.getMonth() !== month) {
++                        cell.classList.add('text-gray-400');
++                    }
++                    dom.calendarGrid.appendChild(cell);
++                }
++                updateTitle();
++            }
++
++            function navigateMonth(offset) {
++                state.currentDate.setMonth(state.currentDate.getMonth() + offset);
++                renderCalendar();
++            }
++
++            // --- FUNÇÃO PRINCIPAL ---
++
++            function main() {
++                const savedTheme = localStorage.getItem('calendarTheme') || 'light';
++                applyTheme(savedTheme);
++
++                renderCalendar();
++
++                dom.prevMonthBtn.addEventListener('click', () => navigateMonth(-1));
++                dom.nextMonthBtn.addEventListener('click', () => navigateMonth(1));
++                dom.todayBtn.addEventListener('click', () => {
++                    state.currentDate = new Date();
++                    renderCalendar();
++                });
++                dom.themeToggleBtn.addEventListener('click', () => {
++                    const isDark = document.documentElement.classList.contains('dark');
++                    applyTheme(isDark ? 'light' : 'dark');
++                });
++
++                console.log('Aplicação inicializada');
++            }
+ 
+             // --- PONTO DE ENTRADA ---
+             lucide.createIcons();
+             main();
+         });
+     </script>
+ </body>
+ </html>
