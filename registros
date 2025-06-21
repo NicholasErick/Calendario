@@ -365,10 +365,12 @@
             });
 
             // --- FUNÇÕES PRINCIPAIS E LÓGICA DA APP ---
-            // (Todas as funções auxiliares e a lógica principal da aplicação vão aqui)
 
-            // ... (O restante do código JavaScript que já está funcional será colocado aqui,
-            // garantindo que as variáveis e funções estejam no escopo correto) ...
+            // Função principal da aplicação.
+            // Aqui deveriam ser inseridas as funcionalidades completas do calendário.
+            function main() {
+                console.log('Aplicação inicializada');
+            }
 
             // --- PONTO DE ENTRADA ---
             lucide.createIcons();
